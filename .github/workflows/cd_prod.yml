@@ -10,7 +10,7 @@ on:
         default: AUTO
 
 env:
-  TARGET_NAME: hello-bot
+  TARGET_NAME: epic-games-bot
   TARGET_STAGE: prod
   TARGET_VERSION: ${{ github.event.inputs.version || github.ref }}
 
