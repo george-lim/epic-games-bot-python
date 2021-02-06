@@ -40,27 +40,42 @@ print(EpicGamesBot.list_free_promotional_offers())
 
 ### Purchase free promotional offers
 
-This snippet logs into Epic Games and purchases free promotional offers.
+This snippet logs into Epic Games, purchases free promotional offers, and persists all login cookies to a file. It will prioritize login cookies over account credentials for authentication.
 
 ```python
+import json
+from pathlib import Path
+
 from epic_games_bot import EpicGamesBot
-from playwright import sync_playwright
+from playwright.sync_api import sync_playwright
 
-username = "test@example.com"
-password = "********"
-code = None  # 2FA (optional)
 
-with sync_playwright() as api:
+def run(playwright):
+    username = "test@example.com"
+    password = "********"
+    code = None  # 2FA (optional)
+
+    cookies_path = Path("/tmp/cookies.json")
+
     browser = None
 
     try:
-        browser = api.firefox.launch()
-        page = browser.newPage()
+        browser = playwright.firefox.launch()
+        page = browser.new_page()
 
-        bot = EpicGamesBot(page, None, username, password, code)
+        bot = EpicGamesBot(page)
+
+        if cookies_path.exists():
+            cookies = json.loads(cookies_path.read_text())
+            bot.log_in(cookies)
+        else:
+            bot.log_in(None, username, password, code)
+
         purchased_offer_urls = bot.purchase_free_promotional_offers()
 
         [print(url) for url in purchased_offer_urls]
+
+        cookies_path.write_text(json.dumps(bot.cookies))
 
         browser.close()
     except Exception:
@@ -68,23 +83,10 @@ with sync_playwright() as api:
             browser.close()
 
         raise
-```
 
-### Login session persistence
 
-This snippet shows how to persist and restore login sessions with cookies.
-
-```python
-cookies_path = pathlib.Path("/tmp/cookies.json")
-
-# Persist `cookies` to `cookies_path`
-bot = EpicGamesBot(page, None, username, password, code)
-cookies = bot.get_cookies()
-cookies_path.write_text(json.dumps(cookies))
-
-# Restore `cookies` from `cookies_path`
-cookies = json.loads(cookies_path.read_text())
-bot = EpicGamesBot(page, cookies)
+with sync_playwright() as playwright:
+    run(playwright)
 ```
 
 ## CI/CD
@@ -92,11 +94,11 @@ bot = EpicGamesBot(page, cookies)
 ### Secrets
 
 ```yaml
-PYPI_USERNAME: '__token__'
-PYPI_PASSWORD: '********'
+PYPI_USERNAME: __token__
+PYPI_PASSWORD: "********"
 
-TESTPYPI_USERNAME: '__token__'
-TESTPYPI_PASSWORD: '********'
+TESTPYPI_USERNAME: __token__
+TESTPYPI_PASSWORD: "********"
 ```
 
 These secrets must exist in the repository for `CD` workflows to publish the PyPI package.
