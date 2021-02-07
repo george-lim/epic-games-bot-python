@@ -12,6 +12,7 @@ Epic Games Bot is a Python library to purchase free promotional offers on Epic G
 ## Usage
 
 ```bash
+python3 -m pip install requests
 python3 -m pip install epic-games-bot
 python3 -m playwright install
 ```
