@@ -37,7 +37,7 @@ print(EpicGamesBot.list_free_promotional_offers())
 # > ['https://www.epicgames.com/...', ...]
 ```
 
-### Purchase free promotional offers
+### Purchase free promotional offers (synchronously)
 
 This snippet logs into Epic Games, purchases free promotional offers, and persists all login cookies to a file. It will prioritize login cookies over account credentials for authentication.
 
@@ -85,6 +85,61 @@ def run(playwright):
 
 with sync_playwright() as playwright:
     run(playwright)
+```
+
+### Purchase free promotional offers (asynchronously)
+
+This snippet logs into Epic Games, purchases free promotional offers, and persists all login cookies to a file. It will prioritize login cookies over account credentials for authentication.
+
+```python
+import asyncio
+import json
+from pathlib import Path
+
+from epic_games_bot import EpicGamesBot
+from playwright.async_api import async_playwright
+
+
+async def run(playwright):
+    username = "test@example.com"
+    password = "********"
+
+    cookies_path = Path("/tmp/cookies.json")
+
+    browser = None
+
+    try:
+        browser = await playwright.firefox.launch()
+        page = await browser.new_page()
+
+        bot = EpicGamesBot(page)
+
+        if cookies_path.exists():
+            cookies = json.loads(cookies_path.read_text())
+            await bot.async_log_in(cookies)
+        else:
+            await bot.async_log_in(None, username, password)
+
+        purchased_offer_urls = await bot.async_purchase_free_promotional_offers()
+
+        [print(url) for url in purchased_offer_urls]
+
+        cookies_path.write_text(json.dumps(await bot.cookies))
+
+        await browser.close()
+    except Exception:
+        if browser:
+            await browser.close()
+
+        raise
+
+
+async def main():
+    async with async_playwright() as playwright:
+        await run(playwright)
+
+
+asyncio.run(main())
 ```
 
 ## CI/CD

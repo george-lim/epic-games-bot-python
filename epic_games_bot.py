@@ -50,6 +50,32 @@ class EpicGamesBot:
 
         self._is_logged_in = True
 
+    async def async_log_in(self, cookies=None, username=None, password=None):
+        if cookies:
+            logging.info("Logging in with cookies...")
+            await self.page.context.add_cookies(cookies)
+            await self.page.goto(f"{EPIC_GAMES_URL}/login", wait_until="networkidle")
+        elif username and password:
+            logging.info("Logging in with account credentials...")
+            await self.page.context.clear_cookies()
+
+            await self.page.goto(f"{EPIC_GAMES_URL}/id/login/epic")
+            await self.page.type("#email", username)
+            await self.page.type("#password", password)
+            await self.page.click("#sign-in:enabled")
+            await self.page.wait_for_load_state("networkidle")
+
+            await self.page.context.add_cookies([PERMISSION_COOKIE])
+        else:
+            raise Exception("missing account credentials")
+
+        user = await self.page.wait_for_selector("#user")
+
+        if "loggedIn" not in await user.get_attribute("class"):
+            raise Exception("authentication failed")
+
+        self._is_logged_in = True
+
     @staticmethod
     def list_free_promotional_offers():
         api = EpicGamesStoreAPI()
@@ -106,6 +132,39 @@ class EpicGamesBot:
 
             self.page.click(".btn-primary")
             self.page.wait_for_load_state("networkidle")
+
+            purchased_offer_urls.append(offer_url)
+
+        return purchased_offer_urls
+
+    async def async_purchase_free_promotional_offers(self):
+        if not self.is_logged_in:
+            raise Exception("authentication failed")
+
+        logging.info("Purchasing free promotional offers...")
+        purchased_offer_urls = []
+
+        for offer_url in self.list_free_promotional_offers():
+            await self.page.goto(offer_url)
+
+            purchase_button = await self.page.query_selector(
+                "//button[contains(., 'Get')]"
+            )
+
+            if not purchase_button:
+                continue
+
+            await purchase_button.click()
+
+            eula_checkbox = await self.page.query_selector("#agree")
+
+            if eula_checkbox:
+                await eula_checkbox.check()
+                await self.page.click("[data-component='EulaModalActions'] button")
+                await purchase_button.click()
+
+            await self.page.click(".btn-primary")
+            await self.page.wait_for_load_state("networkidle")
 
             purchased_offer_urls.append(offer_url)
 
