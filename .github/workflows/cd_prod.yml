@@ -28,7 +28,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install semantic-version setuptools wheel twine
+        pip install requests semantic-version setuptools wheel twine
     - name: Resolve target version
       run: |
         TARGET_VERSION=${TARGET_VERSION#refs/*/v}
