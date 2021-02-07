@@ -52,7 +52,6 @@ from playwright.sync_api import sync_playwright
 def run(playwright):
     username = "test@example.com"
     password = "********"
-    code = None  # 2FA (optional)
 
     cookies_path = Path("/tmp/cookies.json")
 
@@ -68,7 +67,7 @@ def run(playwright):
             cookies = json.loads(cookies_path.read_text())
             bot.log_in(cookies)
         else:
-            bot.log_in(None, username, password, code)
+            bot.log_in(None, username, password)
 
         purchased_offer_urls = bot.purchase_free_promotional_offers()
 
