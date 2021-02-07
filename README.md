@@ -97,7 +97,7 @@ import asyncio
 import json
 from pathlib import Path
 
-from epic_games_bot import EpicGamesBot
+from epic_games_bot import AsyncEpicGamesBot
 from playwright.async_api import async_playwright
 
 
@@ -113,15 +113,15 @@ async def run(playwright):
         browser = await playwright.firefox.launch()
         page = await browser.new_page()
 
-        bot = EpicGamesBot(page)
+        bot = AsyncEpicGamesBot(page)
 
         if cookies_path.exists():
             cookies = json.loads(cookies_path.read_text())
-            await bot.async_log_in(cookies)
+            await bot.log_in(cookies)
         else:
-            await bot.async_log_in(None, username, password)
+            await bot.log_in(None, username, password)
 
-        purchased_offer_urls = await bot.async_purchase_free_promotional_offers()
+        purchased_offer_urls = await bot.purchase_free_promotional_offers()
 
         [print(url) for url in purchased_offer_urls]
 

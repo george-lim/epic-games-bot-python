@@ -50,32 +50,6 @@ class EpicGamesBot:
 
         self._is_logged_in = True
 
-    async def async_log_in(self, cookies=None, username=None, password=None):
-        if cookies:
-            logging.info("Logging in with cookies...")
-            await self.page.context.add_cookies(cookies)
-            await self.page.goto(f"{EPIC_GAMES_URL}/login", wait_until="networkidle")
-        elif username and password:
-            logging.info("Logging in with account credentials...")
-            await self.page.context.clear_cookies()
-
-            await self.page.goto(f"{EPIC_GAMES_URL}/id/login/epic")
-            await self.page.type("#email", username)
-            await self.page.type("#password", password)
-            await self.page.click("#sign-in:enabled")
-            await self.page.wait_for_load_state("networkidle")
-
-            await self.page.context.add_cookies([PERMISSION_COOKIE])
-        else:
-            raise Exception("missing account credentials")
-
-        user = await self.page.wait_for_selector("#user")
-
-        if "loggedIn" not in await user.get_attribute("class"):
-            raise Exception("authentication failed")
-
-        self._is_logged_in = True
-
     @staticmethod
     def list_free_promotional_offers():
         api = EpicGamesStoreAPI()
@@ -137,7 +111,35 @@ class EpicGamesBot:
 
         return purchased_offer_urls
 
-    async def async_purchase_free_promotional_offers(self):
+
+class AsyncEpicGamesBot(EpicGamesBot):
+    async def log_in(self, cookies=None, username=None, password=None):
+        if cookies:
+            logging.info("Logging in with cookies...")
+            await self.page.context.add_cookies(cookies)
+            await self.page.goto(f"{EPIC_GAMES_URL}/login", wait_until="networkidle")
+        elif username and password:
+            logging.info("Logging in with account credentials...")
+            await self.page.context.clear_cookies()
+
+            await self.page.goto(f"{EPIC_GAMES_URL}/id/login/epic")
+            await self.page.type("#email", username)
+            await self.page.type("#password", password)
+            await self.page.click("#sign-in:enabled")
+            await self.page.wait_for_load_state("networkidle")
+
+            await self.page.context.add_cookies([PERMISSION_COOKIE])
+        else:
+            raise Exception("missing account credentials")
+
+        user = await self.page.wait_for_selector("#user")
+
+        if "loggedIn" not in await user.get_attribute("class"):
+            raise Exception("authentication failed")
+
+        self._is_logged_in = True
+
+    async def purchase_free_promotional_offers(self):
         if not self.is_logged_in:
             raise Exception("authentication failed")
 
