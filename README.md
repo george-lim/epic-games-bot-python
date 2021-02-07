@@ -156,3 +156,10 @@ TESTPYPI_PASSWORD: "********"
 ```
 
 These secrets must exist in the repository for `CD` workflows to publish the PyPI package.
+
+```yaml
+SCHEDULE_EPIC_GAMES_USERNAME: test@example.com
+SCHEDULE_EPIC_GAMES_PASSWORD: "********"
+```
+
+These secrets must exist in the repository for `Schedule` workflow to periodically purchase free promotional offers.

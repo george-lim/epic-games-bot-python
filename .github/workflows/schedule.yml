@@ -1,0 +1,33 @@
+name: Schedule
+
+on:
+  schedule:
+    - cron: "0 22 * * 1,3,5"
+  workflow_dispatch:
+
+env:
+  TARGET_NAME: epic-games-bot
+  TARGET_VERSION: 1.0.0
+
+jobs:
+  schedule:
+    name: Purchase free promotional offers
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+        pip install -e .
+        playwright install
+    - name: Purchase free promotional offers
+      env:
+        SCHEDULE_EPIC_GAMES_USERNAME: ${{ secrets.SCHEDULE_EPIC_GAMES_USERNAME }}
+        SCHEDULE_EPIC_GAMES_PASSWORD: ${{ secrets.SCHEDULE_EPIC_GAMES_PASSWORD }}
+      run: python scripts/purchase_free_promotional_offers.py
