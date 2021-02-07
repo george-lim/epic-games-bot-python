@@ -95,16 +95,15 @@ class EpicGamesBot:
         for offer_url in self.list_free_promotional_offers():
             self.page.goto(offer_url)
 
-            purchase_buttons = self.page.query_selector_all(
+            purchase_button = self.page.query_selector(
                 "//button[contains(., 'Get')]"
             )
 
-            for purchase_button in purchase_buttons:
+            if purchase_button:
                 purchase_button.click()
                 self.page.click(".btn-primary")
                 self.page.wait_for_load_state("networkidle")
 
-            if purchase_buttons:
                 purchased_offer_urls.append(offer_url)
 
         return purchased_offer_urls
