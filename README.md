@@ -54,7 +54,7 @@ def run(playwright):
     username = "test@example.com"
     password = "********"
 
-    cookies_path = Path("/tmp/cookies.json")
+    cookies_path = Path("cookies.json")
 
     browser = None
 
@@ -105,7 +105,7 @@ async def run(playwright):
     username = "test@example.com"
     password = "********"
 
-    cookies_path = Path("/tmp/cookies.json")
+    cookies_path = Path("cookies.json")
 
     browser = None
 
