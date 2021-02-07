@@ -24,7 +24,7 @@ class EpicGamesBot:
     def cookies(self):
         return self.page.context.cookies()
 
-    def log_in(self, cookies=None, username=None, password=None, code=None):
+    def log_in(self, cookies=None, username=None, password=None):
         if cookies:
             logging.info("Logging in with cookies...")
             self.page.context.add_cookies(cookies)
@@ -38,11 +38,6 @@ class EpicGamesBot:
             self.page.type("#password", password)
             self.page.click("#sign-in:enabled")
             self.page.wait_for_load_state("networkidle")
-
-            if "/mfa" in self.page.url:
-                self.page.type("#code", code)
-                self.page.press("#code", "Enter")
-                self.page.wait_for_load_state("networkidle")
 
             self.page.context.add_cookies([PERMISSION_COOKIE])
         else:
@@ -95,15 +90,23 @@ class EpicGamesBot:
         for offer_url in self.list_free_promotional_offers():
             self.page.goto(offer_url)
 
-            purchase_button = self.page.query_selector(
-                "//button[contains(., 'Get')]"
-            )
+            purchase_button = self.page.query_selector("//button[contains(., 'Get')]")
 
-            if purchase_button:
+            if not purchase_button:
+                continue
+
+            purchase_button.click()
+
+            eula_checkbox = self.page.query_selector("#agree")
+
+            if eula_checkbox:
+                eula_checkbox.check()
+                self.page.click("[data-component='EulaModalActions'] button")
                 purchase_button.click()
-                self.page.click(".btn-primary")
-                self.page.wait_for_load_state("networkidle")
 
-                purchased_offer_urls.append(offer_url)
+            self.page.click(".btn-primary")
+            self.page.wait_for_load_state("networkidle")
+
+            purchased_offer_urls.append(offer_url)
 
         return purchased_offer_urls
