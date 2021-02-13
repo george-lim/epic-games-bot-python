@@ -12,7 +12,6 @@ Epic Games Bot is a Python library to purchase free promotional offers on Epic G
 ## Usage
 
 ```bash
-python3 -m pip install requests
 python3 -m pip install epic-games-bot
 python3 -m playwright install
 ```
@@ -38,29 +37,43 @@ print(EpicGamesBot.list_free_promotional_offers())
 # > ['https://www.epicgames.com/...', ...]
 ```
 
-### Purchase free promotional offers
+### Purchase free promotional offers (synchronously)
 
-This snippet logs into Epic Games and purchases free promotional offers.
+This snippet logs into Epic Games, purchases free promotional offers, and persists all login cookies to a file. It will prioritize login cookies over account credentials for authentication.
 
 ```python
+import json
+from pathlib import Path
+
 from epic_games_bot import EpicGamesBot
-from playwright import sync_playwright
+from playwright.sync_api import sync_playwright
 
-username = "test@example.com"
-password = "********"
-code = None  # 2FA (optional)
 
-with sync_playwright() as api:
+def run(playwright):
+    username = "test@example.com"
+    password = "********"
+
+    cookies_path = Path("cookies.json")
+
     browser = None
 
     try:
-        browser = api.firefox.launch()
-        page = browser.newPage()
+        browser = playwright.firefox.launch()
+        page = browser.new_page()
 
-        bot = EpicGamesBot(page, None, username, password, code)
+        bot = EpicGamesBot(page)
+
+        if cookies_path.exists():
+            cookies = json.loads(cookies_path.read_text())
+            bot.log_in(cookies)
+        else:
+            bot.log_in(None, username, password)
+
         purchased_offer_urls = bot.purchase_free_promotional_offers()
 
         [print(url) for url in purchased_offer_urls]
+
+        cookies_path.write_text(json.dumps(bot.cookies))
 
         browser.close()
     except Exception:
@@ -68,23 +81,65 @@ with sync_playwright() as api:
             browser.close()
 
         raise
+
+
+with sync_playwright() as playwright:
+    run(playwright)
 ```
 
-### Login session persistence
+### Purchase free promotional offers (asynchronously)
 
-This snippet shows how to persist and restore login sessions with cookies.
+This snippet logs into Epic Games, purchases free promotional offers, and persists all login cookies to a file. It will prioritize login cookies over account credentials for authentication.
 
 ```python
-cookies_path = pathlib.Path("/tmp/cookies.json")
+import asyncio
+import json
+from pathlib import Path
 
-# Persist `cookies` to `cookies_path`
-bot = EpicGamesBot(page, None, username, password, code)
-cookies = bot.get_cookies()
-cookies_path.write_text(json.dumps(cookies))
+from epic_games_bot import AsyncEpicGamesBot
+from playwright.async_api import async_playwright
 
-# Restore `cookies` from `cookies_path`
-cookies = json.loads(cookies_path.read_text())
-bot = EpicGamesBot(page, cookies)
+
+async def run(playwright):
+    username = "test@example.com"
+    password = "********"
+
+    cookies_path = Path("cookies.json")
+
+    browser = None
+
+    try:
+        browser = await playwright.firefox.launch()
+        page = await browser.new_page()
+
+        bot = AsyncEpicGamesBot(page)
+
+        if cookies_path.exists():
+            cookies = json.loads(cookies_path.read_text())
+            await bot.log_in(cookies)
+        else:
+            await bot.log_in(None, username, password)
+
+        purchased_offer_urls = await bot.purchase_free_promotional_offers()
+
+        [print(url) for url in purchased_offer_urls]
+
+        cookies_path.write_text(json.dumps(await bot.cookies))
+
+        await browser.close()
+    except Exception:
+        if browser:
+            await browser.close()
+
+        raise
+
+
+async def main():
+    async with async_playwright() as playwright:
+        await run(playwright)
+
+
+asyncio.run(main())
 ```
 
 ## CI/CD
@@ -92,11 +147,18 @@ bot = EpicGamesBot(page, cookies)
 ### Secrets
 
 ```yaml
-PYPI_USERNAME: '__token__'
-PYPI_PASSWORD: '********'
+PYPI_USERNAME: __token__
+PYPI_PASSWORD: "********"
 
-TESTPYPI_USERNAME: '__token__'
-TESTPYPI_PASSWORD: '********'
+TESTPYPI_USERNAME: __token__
+TESTPYPI_PASSWORD: "********"
 ```
 
 These secrets must exist in the repository for `CD` workflows to publish the PyPI package.
+
+```yaml
+SCHEDULE_EPIC_GAMES_USERNAME: test@example.com
+SCHEDULE_EPIC_GAMES_PASSWORD: "********"
+```
+
+These secrets must exist in the repository for `Schedule` workflow to periodically purchase free promotional offers.

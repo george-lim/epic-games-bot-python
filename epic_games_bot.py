@@ -12,36 +12,43 @@ PERMISSION_COOKIE = {
 
 
 class EpicGamesBot:
-    def __init__(self, page, cookies=None, username=None, password=None, code=None):
+    def __init__(self, page):
         self.page = page
+        self._is_logged_in = False
 
+    @property
+    def is_logged_in(self):
+        return self._is_logged_in
+
+    @property
+    def cookies(self):
+        return self.page.context.cookies()
+
+    def log_in(self, cookies=None, username=None, password=None):
         if cookies:
             logging.info("Logging in with cookies...")
-            page.context.addCookies(cookies)
-            page.goto(f"{EPIC_GAMES_URL}/login", waitUntil="networkidle")
+            self.page.context.add_cookies(cookies)
+            self.page.goto(f"{EPIC_GAMES_URL}/login", wait_until="networkidle")
         elif username and password:
-            logging.info("Logging in with account info...")
-            page.context.clearCookies()
+            logging.info("Logging in with account credentials...")
+            self.page.context.clear_cookies()
 
-            page.goto(f"{EPIC_GAMES_URL}/id/login/epic")
-            page.type("#email", username)
-            page.type("#password", password)
-            page.click("#sign-in:enabled")
-            page.waitForNavigation()
+            self.page.goto(f"{EPIC_GAMES_URL}/id/login/epic")
+            self.page.type("#email", username)
+            self.page.type("#password", password)
+            self.page.click("#sign-in:enabled")
+            self.page.wait_for_load_state("networkidle")
 
-            if "/mfa" in page.url:
-                page.type("#code", code)
-                page.press("#code", "Enter")
-                page.waitForNavigation()
-
-            page.context.addCookies([PERMISSION_COOKIE])
+            self.page.context.add_cookies([PERMISSION_COOKIE])
         else:
-            raise Exception("missing authentication info")
+            raise Exception("missing account credentials")
 
-        user = page.waitForSelector("#user")
+        user = self.page.wait_for_selector("#user")
 
-        if "loggedIn" not in user.getAttribute("class"):
+        if "loggedIn" not in user.get_attribute("class"):
             raise Exception("authentication failed")
+
+        self._is_logged_in = True
 
     @staticmethod
     def list_free_promotional_offers():
@@ -73,25 +80,94 @@ class EpicGamesBot:
 
         return offer_urls
 
-    def get_cookies(self):
-        return self.page.context.cookies()
-
     def purchase_free_promotional_offers(self):
+        if not self.is_logged_in:
+            raise Exception("authentication failed")
+
         logging.info("Purchasing free promotional offers...")
         purchased_offer_urls = []
 
         for offer_url in self.list_free_promotional_offers():
             self.page.goto(offer_url)
-            purchase_buttons = self.page.querySelectorAll(
+
+            purchase_button = self.page.query_selector("//button[contains(., 'Get')]")
+
+            if not purchase_button:
+                continue
+
+            purchase_button.click()
+
+            eula_checkbox = self.page.query_selector("#agree")
+
+            if eula_checkbox:
+                eula_checkbox.check()
+                self.page.click("[data-component='EulaModalActions'] button")
+                purchase_button.click()
+
+            self.page.click(".btn-primary")
+            self.page.wait_for_load_state("networkidle")
+
+            purchased_offer_urls.append(offer_url)
+
+        return purchased_offer_urls
+
+
+class AsyncEpicGamesBot(EpicGamesBot):
+    async def log_in(self, cookies=None, username=None, password=None):
+        if cookies:
+            logging.info("Logging in with cookies...")
+            await self.page.context.add_cookies(cookies)
+            await self.page.goto(f"{EPIC_GAMES_URL}/login", wait_until="networkidle")
+        elif username and password:
+            logging.info("Logging in with account credentials...")
+            await self.page.context.clear_cookies()
+
+            await self.page.goto(f"{EPIC_GAMES_URL}/id/login/epic")
+            await self.page.type("#email", username)
+            await self.page.type("#password", password)
+            await self.page.click("#sign-in:enabled")
+            await self.page.wait_for_load_state("networkidle")
+
+            await self.page.context.add_cookies([PERMISSION_COOKIE])
+        else:
+            raise Exception("missing account credentials")
+
+        user = await self.page.wait_for_selector("#user")
+
+        if "loggedIn" not in await user.get_attribute("class"):
+            raise Exception("authentication failed")
+
+        self._is_logged_in = True
+
+    async def purchase_free_promotional_offers(self):
+        if not self.is_logged_in:
+            raise Exception("authentication failed")
+
+        logging.info("Purchasing free promotional offers...")
+        purchased_offer_urls = []
+
+        for offer_url in self.list_free_promotional_offers():
+            await self.page.goto(offer_url)
+
+            purchase_button = await self.page.query_selector(
                 "//button[contains(., 'Get')]"
             )
 
-            for purchase_button in purchase_buttons:
-                purchase_button.click()
-                self.page.click(".btn-primary")
-                self.page.waitForNavigation()
+            if not purchase_button:
+                continue
 
-            if purchase_buttons:
-                purchased_offer_urls.append(offer_url)
+            await purchase_button.click()
+
+            eula_checkbox = await self.page.query_selector("#agree")
+
+            if eula_checkbox:
+                await eula_checkbox.check()
+                await self.page.click("[data-component='EulaModalActions'] button")
+                await purchase_button.click()
+
+            await self.page.click(".btn-primary")
+            await self.page.wait_for_load_state("networkidle")
+
+            purchased_offer_urls.append(offer_url)
 
         return purchased_offer_urls
